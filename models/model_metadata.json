@@ -1,0 +1,20 @@
+{
+  "model_type": "Logistic Regression with StandardScaler",
+  "test_accuracy": 0.8085,
+  "test_roc_auc": 0.8837199036217802,
+  "features": [
+    "CGPA",
+    "Internships",
+    "Projects",
+    "Workshops/Certifications",
+    "AptitudeTestScore",
+    "SoftSkillsRating",
+    "ExtracurricularActivities",
+    "PlacementTraining",
+    "SSC_Marks",
+    "HSC_Marks"
+  ],
+  "random_state": 42,
+  "training_samples": 8000,
+  "test_samples": 2000
+}
