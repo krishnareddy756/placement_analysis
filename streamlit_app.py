@@ -29,24 +29,15 @@ def load_model_and_data():
             feature_columns = json.load(f)
         
         # Load model metadata
-        with open('models/model_metadata.json', 'r', encoding='utf-8') as f:
+        with open('models/model_metadata.json', 'r') as f:
             metadata = json.load(f)
             
         # Load data for EDA
-        data = pd.read_csv('placementdata.csv', encoding='utf-8')
+        data = pd.read_csv('placementdata.csv')
         
         # Load insights
-        try:
-            with open('artifacts/insights_summary.txt', 'r', encoding='utf-8') as f:
-                insights = f.read()
-        except UnicodeDecodeError:
-            # Try with UTF-16 encoding if UTF-8 fails
-            with open('artifacts/insights_summary.txt', 'r', encoding='utf-16') as f:
-                insights = f.read()
-        except Exception:
-            # Fallback to reading with default encoding
-            with open('artifacts/insights_summary.txt', 'r') as f:
-                insights = f.read()
+        with open('artifacts/insights_summary.txt', 'r', encoding='utf-8') as f:
+            insights = f.read()
             
         return model, feature_columns, metadata, data, insights
     except Exception as e:
@@ -99,7 +90,7 @@ if page == "📊 Overview":
     # Key insights
     st.header("🔍 Key Insights")
     if insights:
-        st.text(insights)
+        st.markdown(f"```\n{insights}\n```")
     
     # Feature importance
     st.header("📊 Most Important Features")
