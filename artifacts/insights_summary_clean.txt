@@ -1,0 +1,24 @@
+CAMPUS PLACEMENT PREDICTION - KEY INSIGHTS
+
+MODEL PERFORMANCE:
+- Achieved 80.9% accuracy and 0.884 ROC-AUC on test set
+- Logistic Regression proved most effective and interpretable
+
+TOP PREDICTIVE FEATURES:
+1. AptitudeTestScore (0.6108) - STRONGEST predictor
+2. PlacementTraining (0.3920) - Significant positive impact  
+3. ExtracurricularActivities (0.3604) - Strong correlation
+4. SSC_Marks (0.2826) - Academic foundation matters
+5. SoftSkillsRating (0.2634) - Communication skills crucial
+
+KEY INSIGHTS:
+- Aptitude test performance is the #1 predictor
+- Placement training programs have measurable ROI
+- Extracurricular activities significantly boost placement chances
+- Academic performance provides solid foundation
+
+RECOMMENDATIONS:
+- Implement aptitude test preparation workshops
+- Expand placement training programs
+- Encourage extracurricular participation
+- Provide targeted support for low-scoring students

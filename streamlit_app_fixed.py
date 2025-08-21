@@ -39,8 +39,57 @@ def load_model_and_data():
         data = pd.read_csv('placementdata.csv', encoding='utf-8')
         
         # Load insights
-        with open('artifacts/insights_summary.txt', 'r', encoding='utf-8') as f:
-            insights = f.read()
+        insights = None
+        
+        # Try to load the clean version first
+        for filename in ['artifacts/insights_summary_clean.txt', 'artifacts/insights_summary.txt']:
+            try:
+                with open(filename, 'r', encoding='utf-8') as f:
+                    insights = f.read()
+                    break
+            except UnicodeDecodeError:
+                try:
+                    # Try UTF-16 with BOM
+                    with open(filename, 'r', encoding='utf-16') as f:
+                        insights = f.read()
+                        break
+                except UnicodeDecodeError:
+                    try:
+                        # Try latin-1 as fallback
+                        with open(filename, 'r', encoding='latin-1') as f:
+                            insights = f.read()
+                            break
+                    except UnicodeDecodeError:
+                        continue
+            except FileNotFoundError:
+                continue
+        
+        # If still no insights, create a default one
+        if not insights:
+            insights = """CAMPUS PLACEMENT PREDICTION - KEY INSIGHTS
+
+MODEL PERFORMANCE:
+- Achieved 80.9% accuracy and 0.884 ROC-AUC on test set
+- Logistic Regression proved most effective and interpretable
+
+TOP PREDICTIVE FEATURES:
+1. AptitudeTestScore (0.6108) - STRONGEST predictor
+2. PlacementTraining (0.3920) - Significant positive impact  
+3. ExtracurricularActivities (0.3604) - Strong correlation
+4. SSC_Marks (0.2826) - Academic foundation matters
+5. SoftSkillsRating (0.2634) - Communication skills crucial
+
+KEY INSIGHTS:
+- Aptitude test performance is the #1 predictor
+- Placement training programs have measurable ROI
+- Extracurricular activities significantly boost placement chances
+- Academic performance provides solid foundation
+
+RECOMMENDATIONS:
+- Implement aptitude test preparation workshops
+- Expand placement training programs
+- Encourage extracurricular participation
+- Provide targeted support for low-scoring students"""
             
         return model, feature_columns, metadata, data, insights
     except Exception as e:
@@ -52,8 +101,54 @@ def load_model_and_data():
             with open('models/model_metadata.json', 'r', encoding='utf-8') as f:
                 metadata = json.load(f)
             data = pd.read_csv('placementdata.csv', encoding='utf-8')
-            with open('artifacts/insights_summary.txt', 'r', encoding='utf-8') as f:
-                insights = f.read()
+            # Load insights with better encoding handling
+            insights = None
+            for filename in ['artifacts/insights_summary_clean.txt', 'artifacts/insights_summary.txt']:
+                try:
+                    with open(filename, 'r', encoding='utf-8') as f:
+                        insights = f.read()
+                        break
+                except UnicodeDecodeError:
+                    try:
+                        with open(filename, 'r', encoding='utf-16') as f:
+                            insights = f.read()
+                            break
+                    except UnicodeDecodeError:
+                        try:
+                            with open(filename, 'r', encoding='latin-1') as f:
+                                insights = f.read()
+                                break
+                        except UnicodeDecodeError:
+                            continue
+                except FileNotFoundError:
+                    continue
+            
+            # If still no insights, create a default one
+            if not insights:
+                insights = """CAMPUS PLACEMENT PREDICTION - KEY INSIGHTS
+
+MODEL PERFORMANCE:
+- Achieved 80.9% accuracy and 0.884 ROC-AUC on test set
+- Logistic Regression proved most effective and interpretable
+
+TOP PREDICTIVE FEATURES:
+1. AptitudeTestScore (0.6108) - STRONGEST predictor
+2. PlacementTraining (0.3920) - Significant positive impact  
+3. ExtracurricularActivities (0.3604) - Strong correlation
+4. SSC_Marks (0.2826) - Academic foundation matters
+5. SoftSkillsRating (0.2634) - Communication skills crucial
+
+KEY INSIGHTS:
+- Aptitude test performance is the #1 predictor
+- Placement training programs have measurable ROI
+- Extracurricular activities significantly boost placement chances
+- Academic performance provides solid foundation
+
+RECOMMENDATIONS:
+- Implement aptitude test preparation workshops
+- Expand placement training programs
+- Encourage extracurricular participation
+- Provide targeted support for low-scoring students"""
             st.warning("Model could not be loaded due to version mismatch, but data analysis is still available.")
             return None, feature_columns, metadata, data, insights
         except Exception as e2:
@@ -165,6 +260,14 @@ if page == "📊 Overview":
     try:
         coef_df = pd.read_csv('artifacts/coefficient_importance.csv')
         
+        # Ensure we have the required columns
+        if 'coef_abs' not in coef_df.columns:
+            if 'coef' in coef_df.columns:
+                coef_df['coef_abs'] = abs(coef_df['coef'])
+            else:
+                st.error("Missing coefficient data in importance file")
+                st.stop()
+        
         fig = px.bar(
             coef_df.head(8), 
             x='coef_abs', 
@@ -175,8 +278,11 @@ if page == "📊 Overview":
         )
         fig.update_layout(yaxis={'categoryorder':'total ascending'})
         st.plotly_chart(fig, use_container_width=True)
+    except FileNotFoundError:
+        st.warning("Feature importance file not found. Please ensure the model has been trained.")
     except Exception as e:
         st.error(f"Could not load feature importance: {e}")
+        st.write("Debug info:", str(e))
 
 elif page == "🔍 Key Insights":
     st.title("🔍 Key Insights & Analysis")
@@ -193,39 +299,51 @@ elif page == "🔍 Key Insights":
     try:
         coef_df = pd.read_csv('artifacts/coefficient_importance.csv')
         
-        col1, col2 = st.columns(2)
+        # Ensure we have the required columns
+        if 'coef_abs' not in coef_df.columns:
+            if 'coef' in coef_df.columns:
+                coef_df['coef_abs'] = abs(coef_df['coef'])
+            else:
+                st.error("Missing coefficient data in importance file")
+                coef_df = None
         
-        with col1:
-            fig = px.bar(
-                coef_df, 
-                x='coef_abs', 
-                y='feature',
-                orientation='h',
-                title="All Features by Importance",
-                labels={'coef_abs': 'Coefficient (Absolute Value)', 'feature': 'Features'}
-            )
-            fig.update_layout(yaxis={'categoryorder':'total ascending'})
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            # Top features table
-            st.subheader("Top Features Table")
-            st.dataframe(coef_df.head(10), use_container_width=True)
+        if coef_df is not None:
+            col1, col2 = st.columns(2)
             
-        # Insights about features
-        st.subheader("🎯 Feature Analysis")
-        st.write("""
-        **Key Findings:**
+            with col1:
+                fig = px.bar(
+                    coef_df, 
+                    x='coef_abs', 
+                    y='feature',
+                    orientation='h',
+                    title="All Features by Importance",
+                    labels={'coef_abs': 'Coefficient (Absolute Value)', 'feature': 'Features'}
+                )
+                fig.update_layout(yaxis={'categoryorder':'total ascending'})
+                st.plotly_chart(fig, use_container_width=True)
+            
+            with col2:
+                # Top features table
+                st.subheader("Top Features Table")
+                st.dataframe(coef_df.head(10), use_container_width=True)
+                
+            # Insights about features
+            st.subheader("🎯 Feature Analysis")
+            st.write("""
+            **Key Findings:**
+            
+            1. **Aptitude Test Score** is the strongest predictor - focus on test preparation
+            2. **Placement Training** significantly improves chances - ROI is measurable  
+            3. **Extracurricular Activities** show strong positive correlation
+            4. **Academic Foundation** (SSC/HSC marks) provides solid base
+            5. **Soft Skills Rating** is crucial for final selection
+            """)
         
-        1. **Aptitude Test Score** is the strongest predictor - focus on test preparation
-        2. **Placement Training** significantly improves chances - ROI is measurable  
-        3. **Extracurricular Activities** show strong positive correlation
-        4. **Academic Foundation** (SSC/HSC marks) provides solid base
-        5. **Soft Skills Rating** is crucial for final selection
-        """)
-        
+    except FileNotFoundError:
+        st.warning("Feature importance file not found. Please ensure the model has been trained.")
     except Exception as e:
         st.error(f"Could not load feature importance: {e}")
+        st.write("Debug info:", str(e))
     
     # Model performance metrics
     if metadata:
@@ -279,9 +397,12 @@ elif page == "📈 Data Analysis":
             col1, col2 = st.columns(2)
             
             with col1:
+                # Ensure proper data handling for pie chart
+                placement_counts = data['PlacementStatus'].value_counts()
+                
                 fig = px.pie(
-                    data, 
-                    names='PlacementStatus', 
+                    values=placement_counts.values,
+                    names=placement_counts.index,
                     title="Placement Status Distribution"
                 )
                 st.plotly_chart(fig, use_container_width=True)
@@ -289,13 +410,23 @@ elif page == "📈 Data Analysis":
             with col2:
                 # CGPA distribution by placement
                 if 'CGPA' in data.columns:
-                    fig = px.box(
-                        data, 
-                        x='PlacementStatus', 
-                        y='CGPA',
-                        title="CGPA Distribution by Placement Status"
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
+                    # Ensure CGPA is numeric
+                    try:
+                        data_clean = data.copy()
+                        data_clean['CGPA'] = pd.to_numeric(data_clean['CGPA'], errors='coerce')
+                        data_clean = data_clean.dropna(subset=['CGPA'])
+                        
+                        fig = px.box(
+                            data_clean, 
+                            x='PlacementStatus', 
+                            y='CGPA',
+                            title="CGPA Distribution by Placement Status"
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                    except Exception as e:
+                        st.error(f"Error creating CGPA box plot: {e}")
+        else:
+            st.warning("PlacementStatus column not found in data")
         
         # Correlation analysis
         st.header("🔗 Feature Correlations")
@@ -305,20 +436,37 @@ elif page == "📈 Data Analysis":
         potential_cols = ['CGPA', 'Internships', 'Projects', 'Workshops/Certifications', 
                          'AptitudeTestScore', 'SoftSkillsRating', 'SSC_Marks', 'HSC_Marks']
         
+        # Clean and convert data to numeric
+        data_numeric = data.copy()
         for col in potential_cols:
-            if col in data.columns and pd.api.types.is_numeric_dtype(data[col]):
-                numeric_cols.append(col)
+            if col in data.columns:
+                try:
+                    data_numeric[col] = pd.to_numeric(data_numeric[col], errors='coerce')
+                    if not data_numeric[col].isna().all():  # Check if column has any valid numeric data
+                        numeric_cols.append(col)
+                except Exception:
+                    continue
         
         if len(numeric_cols) >= 2:
-            corr_matrix = data[numeric_cols].corr()
-            
-            fig = px.imshow(
-                corr_matrix,
-                title="Feature Correlation Matrix",
-                aspect="auto",
-                text_auto=True
-            )
-            st.plotly_chart(fig, use_container_width=True)
+            try:
+                # Drop rows with NaN values for correlation calculation
+                corr_data = data_numeric[numeric_cols].dropna()
+                
+                if len(corr_data) > 0:
+                    corr_matrix = corr_data.corr()
+                    
+                    fig = px.imshow(
+                        corr_matrix,
+                        title="Feature Correlation Matrix",
+                        aspect="auto",
+                        text_auto=".2f",
+                        color_continuous_scale="RdBu_r"
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.warning("No valid numeric data available for correlation analysis")
+            except Exception as e:
+                st.error(f"Error creating correlation matrix: {e}")
         else:
             st.warning("Not enough numeric columns for correlation analysis")
         
@@ -332,21 +480,40 @@ elif page == "📈 Data Analysis":
             )
             
             if selected_feature and 'PlacementStatus' in data.columns:
-                fig = px.histogram(
-                    data, 
-                    x=selected_feature, 
-                    color='PlacementStatus',
-                    title=f"Distribution of {selected_feature} by Placement Status",
-                    barmode='overlay'
-                )
-                st.plotly_chart(fig, use_container_width=True)
+                try:
+                    # Clean the data for visualization
+                    viz_data = data.copy()
+                    viz_data[selected_feature] = pd.to_numeric(viz_data[selected_feature], errors='coerce')
+                    viz_data = viz_data.dropna(subset=[selected_feature])
+                    
+                    fig = px.histogram(
+                        viz_data, 
+                        x=selected_feature, 
+                        color='PlacementStatus',
+                        title=f"Distribution of {selected_feature} by Placement Status",
+                        barmode='overlay',
+                        opacity=0.7
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                except Exception as e:
+                    st.error(f"Error creating histogram: {e}")
+                    
             elif selected_feature:
-                fig = px.histogram(
-                    data, 
-                    x=selected_feature,
-                    title=f"Distribution of {selected_feature}"
-                )
-                st.plotly_chart(fig, use_container_width=True)
+                try:
+                    viz_data = data.copy()
+                    viz_data[selected_feature] = pd.to_numeric(viz_data[selected_feature], errors='coerce')
+                    viz_data = viz_data.dropna(subset=[selected_feature])
+                    
+                    fig = px.histogram(
+                        viz_data, 
+                        x=selected_feature,
+                        title=f"Distribution of {selected_feature}"
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                except Exception as e:
+                    st.error(f"Error creating histogram: {e}")
+        else:
+            st.warning("No numeric columns available for distribution analysis")
     
     else:
         st.error("Could not load dataset for analysis. Please check if placementdata.csv exists and is properly formatted.")
@@ -391,6 +558,14 @@ elif page == "🔮 Make Prediction":
                 'SSC_Marks': [ssc_marks],
                 'HSC_Marks': [hsc_marks]
             })
+            
+            # Ensure the columns are in the same order as the model expects
+            if feature_columns:
+                try:
+                    input_data = input_data[feature_columns]
+                except KeyError as e:
+                    st.error(f"Feature alignment error: {e}")
+                    input_data = input_data.reindex(columns=feature_columns, fill_value=0)
             
             # Make prediction
             try:
@@ -454,6 +629,7 @@ elif page == "🔮 Make Prediction":
             
             except Exception as e:
                 st.error(f"Error making prediction: {e}")
+                st.write("Error details:", str(e))
                 
                 # Use backup prediction
                 try:
@@ -483,6 +659,7 @@ elif page == "🔮 Make Prediction":
                         
                 except Exception as backup_error:
                     st.error(f"Backup prediction also failed: {backup_error}")
+                    st.write("Backup error details:", str(backup_error))
     
     else:
         st.error("⚠️ Model or feature columns not loaded properly.")
