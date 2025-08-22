@@ -2,7 +2,11 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import json
-import joblib
+try:
+    import joblib
+except ImportError:
+    st.error("joblib is not installed. Please install it using: pip install joblib")
+    st.stop()
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import RocCurveDisplay, ConfusionMatrixDisplay
